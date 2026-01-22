@@ -1,0 +1,11 @@
+# Global ownership - repo owner reviews all changes
+* @hsanson
+
+# Critical files require extra scrutiny  
+package.json @hsanson
+constants.js @hsanson
+.github/ @hsanson
+docs/DESIGN.md @hsanson
+
+# Test files - ensure quality
+tests/ @hsanson

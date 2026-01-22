@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.repository_owner == github.actor
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create placeholder constants.js
+        run: |
+          echo "export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || 'placeholder';" > constants.js
+
+      - name: Run tests
+        run: npm run ci:test
+
+      - name: Extract version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Read CHANGELOG.md to get release notes
+            let changelogContent = '';
+            try {
+              const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+              const lines = changelog.split('\n');
+              let capturing = false;
+              let releaseNotes = [];
+              
+              for (const line of lines) {
+                if (line.includes('${{ steps.get_version.outputs.VERSION }}') || 
+                    (capturing && line.startsWith('## ') && line !== '## Changelog')) {
+                  break;
+                }
+                if (capturing) {
+                  releaseNotes.push(line);
+                }
+                if (line.includes('## v${{ steps.get_version.outputs.VERSION }}') ||
+                    line.includes('## ${{ steps.get_version.outputs.VERSION }}')) {
+                  capturing = true;
+                }
+              }
+              
+              changelogContent = releaseNotes.join('\n').trim() || 'Release notes not found in CHANGELOG.md';
+            } catch (error) {
+              changelogContent = 'No CHANGELOG.md found';
+            }
+
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: 'v${{ steps.get_version.outputs.VERSION }}',
+              name: 'Mukt v${{ steps.get_version.outputs.VERSION }}',
+              body: changelogContent,
+              draft: false,
+              prerelease: false
+            });

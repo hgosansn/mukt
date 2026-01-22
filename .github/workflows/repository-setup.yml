@@ -1,0 +1,100 @@
+name: Repository Setup
+
+on:
+  workflow_dispatch:
+    inputs:
+      setup_type:
+        description: "What to set up"
+        required: true
+        default: "branch-protection"
+        type: choice
+        options:
+          - branch-protection
+          - all
+
+jobs:
+  setup-branch-protection:
+    runs-on: ubuntu-latest
+    if: github.repository_owner == github.actor
+
+    steps:
+      - name: Setup Branch Protection
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            try {
+              // Set up branch protection for main
+              await github.rest.repos.updateBranchProtection({
+                owner: owner,
+                repo: repo,
+                branch: 'main',
+                required_status_checks: {
+                  strict: true,
+                  contexts: [
+                    'test (ubuntu-latest, 18.x)',
+                    'test (ubuntu-latest, 20.x)', 
+                    'test (ubuntu-latest, 22.x)',
+                    'lint-and-format'
+                  ]
+                },
+                enforce_admins: true,
+                required_pull_request_reviews: {
+                  required_approving_review_count: 1,
+                  dismiss_stale_reviews: true,
+                  require_code_owner_reviews: true
+                },
+                restrictions: null, // No user/team restrictions, rely on enforce_admins
+                allow_force_pushes: false,
+                allow_deletions: false
+              });
+              
+              console.log('✅ Branch protection rules applied successfully');
+              
+              // Update repository settings
+              await github.rest.repos.update({
+                owner: owner,
+                repo: repo,
+                allow_squash_merge: true,
+                allow_merge_commit: true,
+                allow_rebase_merge: true,
+                delete_branch_on_merge: true,
+                allow_auto_merge: true
+              });
+              
+              console.log('✅ Repository settings updated successfully');
+              
+            } catch (error) {
+              console.error('❌ Error setting up repository:', error.message);
+              throw error;
+            }
+
+  setup-status:
+    runs-on: ubuntu-latest
+    needs: setup-branch-protection
+    if: always()
+
+    steps:
+      - name: Report Setup Status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const success = '${{ needs.setup-branch-protection.result }}' === 'success';
+
+            if (success) {
+              console.log('🎉 Repository setup completed successfully!');
+              console.log('');
+              console.log('✅ Branch protection rules active on main branch');
+              console.log('✅ Repository settings optimized for collaboration');
+              console.log('✅ CODEOWNERS file will auto-assign reviews');
+              console.log('✅ PR template provides contributor guidelines');
+              console.log('');
+              console.log('Your repository is now ready for collaboration!');
+            } else {
+              console.error('❌ Repository setup failed');
+              console.error('You may need to apply branch protection rules manually');
+              console.error('See .github/REPOSITORY_SETUP.md for manual instructions');
+            }

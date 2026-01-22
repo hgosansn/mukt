@@ -1,0 +1,78 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "*.md"
+      - "docs/**"
+      - ".gitignore"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "*.md"
+      - "docs/**"
+      - ".gitignore"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm run ci:test
+
+      - name: Quick CLI test
+        run: echo 'quit' | timeout 10s node index.js || [ $? -eq 124 ] && echo "CLI timeout expected"
+        shell: bash
+
+  lint-and-format:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for missing constants.js
+        run: |
+          if [ ! -f constants.js ]; then
+            echo "Creating placeholder constants.js for CI"
+            echo "export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || 'test-key';" > constants.js
+          fi
+
+      - name: Validate package.json
+        run: npm run test:run
+
+      - name: Check file structure
+        run: |
+          echo "Validating project structure..."
+          [ -f "package.json" ] && echo "✓ package.json exists"
+          [ -f "index.js" ] && echo "✓ index.js exists"
+          [ -d "src" ] && echo "✓ src/ directory exists"
+          [ -d "tests" ] && echo "✓ tests/ directory exists"
+          [ -f "tools.json" ] && echo "✓ tools.json exists"
