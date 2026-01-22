@@ -1,17 +1,32 @@
 # Mukt - Free AI Agent
 
 Node.js implementation of a free AI agent with tool support using the OpenRouter API. 
-Mukt (Hindi: मुक्त, meaning "free/liberated") automatically finds and uses free AI models.
+
+**Mukt** (Hindi: मुक्त, meaning "free/liberated") automatically finds and uses free AI models on OpenRouter.ai, making AI experimentation accessible to everyone.
+
+## Why Mukt?
+
+I believe experimenting with the newest AI models should be accessible to all. Most AI providers require credit cards upfront, creating barriers for many users. Mukt is designed for developers and tech enthusiasts who want to explore AI capabilities without financial commitment.
+
+## Important Legal Notice: "Client Tooling" vs. "Reselling"
+
+**This tool is designed for legitimate "client tooling" usage:**
+
+✅ **Safe & Legal**: A CLI where **you provide your own OpenRouter API key**. This is considered a "client" application (like a browser or mobile app) and is perfectly legal under OpenRouter's terms.
+
+❌ **Prohibited**: A service that uses someone else's API key to provide free access to many users. This would be "redistributing" or "reselling" the service, which violates OpenRouter's terms without a specific partner agreement.
+
+**Disclaimer**: While Mukt helps avoid charges by selecting free models, usage is subject to OpenRouter's terms and conditions. Always monitor your API usage to prevent unexpected costs. Free models may have different privacy or data usage policies than paid models. Check your settings at https://openrouter.ai/settings/privacy. 
 
 ## Features
 
-- 🤖 **Conversational AI**: Continuous chat loop with context preservation
-- 🛠️ **Tool Support**: Built-in tools for file operations and command execution
-- 📝 **Smart Memory**: Automatic conversation history management
-- ⏱️ **Timeout Handling**: Robust API timeout and error handling
-- 🧪 **Tested**: Comprehensive test suite with Vitest
-- 🎯 **Model Selection**: Auto-selects free models based on preferences
-- 🔧 **Modular Architecture**: Separated concerns for easy testing and maintenance
+- **Conversational AI**: Continuous chat loop with context preservation
+- **Tool Support**: Built-in tools for file operations and command execution
+- **Smart Memory**: Automatic conversation history management
+- **Timeout Handling**: Robust API timeout and error handling
+- **Tested**: Comprehensive test suite with Vitest
+- **Model Selection**: Auto-selects free models based on preferences
+- **Modular Architecture**: Separated concerns for easy testing and maintenance
 
 ## Available Tools
 
@@ -110,47 +125,8 @@ mukt/
 
 ```bash
 export OPENROUTER_API_KEY="your-api-key-here"
-node llm.js
+node index.js
 ```
-
-## Example Session
-
-```
-🎯 Selected Model: google/gemma-2-9b-it:free
-📁 Working Directory: /Users/hsanson/scripts
-💬 Starting agent conversation (type "quit" or "exit" to stop)
-🛠️  Available tools: list_files, read_file, run_command
-────────────────────────────────────────────────────────
-
-👤 You: What files are in this directory?
-🤖 Assistant: I'll check what files are in your current directory.
-🛠️  Using tool: list_files
-📁 Listing files in: .
-total 32
--rw-r--r--  1 user  staff   245 Jan 22 10:30 package.json
--rwxr-xr-x  1 user  staff  8247 Jan 22 10:29 llm.js
--rwxr-xr-x  1 user  staff  2156 Jan 22 10:30 test.js
-
-🤖 Assistant: I can see you have 3 main files in your directory:
-
-1. **package.json** - Node.js project configuration file
-2. **llm.js** - The main LLM agent script (executable)
-3. **test.js** - Test suite for the agent (executable)
-
-This appears to be a Node.js project for an LLM agent with testing capabilities.
-
-👤 You: Can you read the package.json?
-```
-
-## Improvements over Bash Version
-
-1. **Better Error Handling**: Proper try/catch with detailed error messages
-2. **Type Safety**: Native JSON handling without external dependencies
-3. **Async/Await**: Clean asynchronous code patterns
-4. **Memory Management**: Automatic conversation history trimming
-5. **Testable**: Modular design with comprehensive test suite
-6. **Maintainable**: Clean class-based architecture
-7. **Cross-platform**: Works on any system with Node.js
 
 ## Testing
 
@@ -169,5 +145,10 @@ Tests cover:
 
 ## Requirements
 
-- Node.js 18+ (for fetch API support)
-- OpenRouter API key
+- Node.js (version 16 or higher)
+- [OpenRouter API key](https://openrouter.ai/settings/keys) (free account)
+- Set credit limit to zero to avoid any charges
+
+## License & Usage
+
+This project is open source. You provide your own API key and are responsible for your own usage according to OpenRouter's terms of service.
