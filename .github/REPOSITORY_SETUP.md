@@ -4,7 +4,7 @@ This document explains how to configure GitHub repository settings for collabora
 
 ## Automated Workflows
 
-The repository includes three GitHub Actions workflows:
+The repository includes two GitHub Actions workflows:
 
 ### 1. Tests Workflow (`.github/workflows/test.yml`)
 - **Triggers**: Pull requests and pushes to main branch
@@ -15,15 +15,7 @@ The repository includes three GitHub Actions workflows:
   - Validates project structure
 - **Path exclusions**: Ignores documentation changes to avoid unnecessary test runs
 
-### 2. Repository Setup Workflow (`.github/workflows/repository-setup.yml`)
-- **Triggers**: Manual dispatch only (workflow_dispatch)
-- **Restrictions**: Only repo owner can run
-- **Actions**:
-  - Automatically applies branch protection rules
-  - Configures repository settings for collaboration
-  - One-time setup when repository is first created
-
-### 3. Release Workflow (`.github/workflows/release.yml`)
+### 2. Release Workflow (`.github/workflows/release.yml`)
 - **Triggers**: When version tags (v*) are pushed
 - **Restrictions**: Only repo owner can trigger releases
 - **Actions**:
@@ -39,21 +31,9 @@ Instead of automated assignment, the repository uses:
 
 ## Required Repository Settings
 
-### Automated Setup (Recommended)
+### Branch Protection Rules
 
-After pushing the workflows to GitHub, you can automatically apply all repository settings:
-
-1. Go to **Actions** tab in your GitHub repository
-2. Select **Repository Setup** workflow
-3. Click **Run workflow** → **Run workflow**
-4. The workflow will automatically:
-   - Apply branch protection rules to main branch
-   - Configure repository collaboration settings
-   - Optimize merge and branch policies
-
-### Manual Setup (Alternative)
-
-If the automated setup fails, configure these settings manually:
+To restrict access to the main branch, configure these settings in GitHub:
 
 1. **Go to**: Repository Settings → Branches → Add rule
 2. **Branch name pattern**: `main`
@@ -160,15 +140,7 @@ With these settings, the collaboration workflow becomes:
 
 ## Quick Setup Commands
 
-After creating the repository on GitHub:
-
-### Option 1: Automated (Recommended)
-1. Push all files to GitHub
-2. Go to **Actions** → **Repository Setup** → **Run workflow**
-3. Done! Branch protection and settings are automatically configured.
-
-### Option 2: GitHub CLI (Alternative)
-If you prefer command line, run these commands (requires GitHub CLI):
+After creating the repository on GitHub, run these commands to apply the settings programmatically (requires GitHub CLI):
 
 ```bash
 # Enable branch protection

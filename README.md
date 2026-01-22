@@ -8,15 +8,7 @@ Node.js implementation of a free AI agent with tool support using the OpenRouter
 
 I believe experimenting with the newest AI models should be accessible to all. Most AI providers require credit cards upfront, creating barriers for many users. Mukt is designed for developers and tech enthusiasts who want to explore AI capabilities without financial commitment.
 
-## Important Legal Notice: "Client Tooling" vs. "Reselling"
-
-**This tool is designed for legitimate "client tooling" usage:**
-
-✅ **Safe & Legal**: A CLI where **you provide your own OpenRouter API key**. This is considered a "client" application (like a browser or mobile app) and is perfectly legal under OpenRouter's terms.
-
-❌ **Prohibited**: A service that uses someone else's API key to provide free access to many users. This would be "redistributing" or "reselling" the service, which violates OpenRouter's terms without a specific partner agreement.
-
-**Disclaimer**: While Mukt helps avoid charges by selecting free models, usage is subject to OpenRouter's terms and conditions. Always monitor your API usage to prevent unexpected costs. Free models may have different privacy or data usage policies than paid models. Check your settings at https://openrouter.ai/settings/privacy. 
+**Disclaimer**: While Mukt helps avoid charges by selecting free models, usage is subject to OpenRouter's terms and conditions. Free models may have different privacy or data usage policies than paid models. Check your settings at https://openrouter.ai/settings/privacy. 
 
 ## Features
 
@@ -152,3 +144,11 @@ Tests cover:
 ## License & Usage
 
 This project is open source. You provide your own API key and are responsible for your own usage according to OpenRouter's terms of service.
+
+Important Legal Notice: "Client Tooling" vs. "Reselling"
+
+**This tool is designed for legitimate "client tooling" usage:**
+
+**Safe & Legal**: A CLI where **you provide your own OpenRouter API key**. This is considered a "client" application (like a browser or mobile app) and is perfectly legal under OpenRouter's terms.
+
+**Prohibited**: A service that uses someone else's API key to provide free access to many users. This would be "redistributing" or "reselling" the service, which violates OpenRouter's terms without a specific partner agreement.
