@@ -3,7 +3,7 @@
 ## Project Overview
 Mukt is a modular AI agent CLI tool that provides free AI model access through OpenRouter. 
 
-**📋 Complete Technical Specification**: See [docs/DESIGN.md](../docs/DESIGN.md) for comprehensive architecture, module specifications, data flow diagrams, and design patterns. 
+**Complete Technical Specification**: See [docs/DESIGN.md](../docs/DESIGN.md) for comprehensive architecture, module specifications, data flow diagrams, and design patterns. 
 
 ## CRITICAL: Always Commit Changes
 ** MANDATORY: After ANY code changes, file modifications, or deletions - ALWAYS commit immediately**
