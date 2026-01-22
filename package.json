@@ -1,0 +1,29 @@
+{
+  "name": "mukt",
+  "version": "1.0.0",
+  "description": "Mukt - Free AI agent with tool support using OpenRouter API",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "dev:test": "vitest",
+    "ci:test": "vitest run --reporter=verbose",
+    "dev:run": "node index.js",
+    "dev:quick": "echo 'quit' | node index.js",
+    "commit:test": "npm run test:run && echo 'quit' | node index.js"
+  },
+  "keywords": ["ai", "agent", "openrouter", "tools", "llm", "free", "mukt"],
+  "author": "Your Name",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "bin": {
+    "mukt": "./index.js"
+  },
+  "devDependencies": {
+    "vitest": "^1.0.0"
+  }
+}

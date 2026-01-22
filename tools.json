@@ -1,0 +1,63 @@
+[
+    {
+        "type": "function",
+        "function": {
+            "name": "list_files",
+            "description": "List files and directories in the current working directory or specified path",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path to list files from. Defaults to current directory if not specified."
+                    },
+                    "show_hidden": {
+                        "type": "boolean",
+                        "description": "Whether to show hidden files (starting with .)",
+                        "default": false
+                    }
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "description": "Read the contents of a file",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Path to the file to read"
+                    },
+                    "max_lines": {
+                        "type": "number",
+                        "description": "Maximum number of lines to read. If not specified, reads entire file.",
+                        "default": null
+                    }
+                },
+                "required": ["file_path"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_command",
+            "description": "Execute a shell command in the current directory",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "The shell command to execute"
+                    }
+                },
+                "required": ["command"]
+            }
+        }
+    }
+]

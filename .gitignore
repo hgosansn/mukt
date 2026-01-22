@@ -1,0 +1,4 @@
+constants.js
+node_modules/
+.env
+!.env.template
