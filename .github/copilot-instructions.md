@@ -5,6 +5,23 @@ Mukt is a modular AI agent CLI tool that provides free AI model access through O
 
 **📋 Complete Technical Specification**: See [docs/DESIGN.md](../docs/DESIGN.md) for comprehensive architecture, module specifications, data flow diagrams, and design patterns. 
 
+## CRITICAL: Always Commit Changes
+** MANDATORY: After ANY code changes, file modifications, or deletions - ALWAYS commit immediately**
+
+**Required Workflow:**
+1. Make changes
+2. `git add .` 
+3. `git commit -m "YYYY-MM-DD: [TYPE] Description"`
+4. Update CHANGELOG.md if not already done
+5. Never leave uncommitted changes
+
+**Commit Message Format:**
+- `YYYY-MM-DD: [FEATURE] New functionality added`
+- `YYYY-MM-DD: [BUGFIX] Fixed specific issue`  
+- `YYYY-MM-DD: [REFACTOR] Code restructuring`
+- `YYYY-MM-DD: [TEST] Added/updated tests`
+- `YYYY-MM-DD: [DOCS] Documentation changes`
+
 ## Key Development Rules
 - Use ES modules exclusively (import/export)
 - Maintain zero runtime dependencies 
@@ -55,14 +72,29 @@ Mukt is a modular AI agent CLI tool that provides free AI model access through O
 - index.js: CLI entry point
 
 ## Change Management
-**See [docs/DESIGN.md](../docs/DESIGN.md) for complete development workflow**
+**🚨 CRITICAL RULE: COMMIT EVERY CHANGE IMMEDIATELY**
 
-- Each feature/fix/refactoring must be atomic (single focused change)
-- Add dated entries to CHANGELOG.md at project root
-- Format: `YYYY-MM-DD: [TYPE] Description`
-- Types: FEATURE, BUGFIX, REFACTOR, TEST, DOCS
-- Test → Log → Commit each change independently
-- Example: `2026-01-22: [FEATURE] Added user authentication module`
+**Mandatory Workflow (NEVER skip):**
+1. Make any change (code/files/docs)
+2. `git add .`
+3. `git commit -m "YYYY-MM-DD: [TYPE] Description"` 
+4. Update CHANGELOG.md (if not in commit)
+5. Push when requested or logical
+
+**Change Types:**
+- **FEATURE**: New functionality, tools, workflows
+- **BUGFIX**: Error corrections, issue fixes
+- **REFACTOR**: Code restructuring, cleanup, optimization
+- **TEST**: Test additions, modifications, test infrastructure  
+- **DOCS**: Documentation, README, comments
+- **SECURITY**: Security fixes, key management
+
+**Examples:**
+- `2026-01-22: [FEATURE] Added GitHub workflows for PR automation`
+- `2026-01-22: [REFACTOR] Removed redundant auto-assign workflow`
+- `2026-01-22: [BUGFIX] Fixed model selection scoring algorithm`
+
+**See [docs/DESIGN.md](../docs/DESIGN.md) for complete development workflow**
 
 ## Commands
 - npm run dev: Start development
