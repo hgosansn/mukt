@@ -35,6 +35,10 @@ class ToolSystem {
                 return await this.executeReadFile(args);
             case 'run_command':
                 return await this.executeRunCommand(args);
+            case 'write_file':
+                return await this.executeWriteFile(args);
+            case 'create_directory':
+                return await this.executeCreateDirectory(args);
             default:
                 return `Error: Unknown tool: ${toolName}`;
         }
@@ -88,6 +92,43 @@ class ToolSystem {
             return output;
         } catch (error) {
             return `Command failed: ${error.message}`;
+        }
+    }
+
+    async executeWriteFile(args) {
+        try {
+            const filePath = args.file_path;
+            const content = args.content;
+            const append = args.append || false;
+            
+            if (process.env.DEBUG) console.log(`Writing to file: ${filePath} (append: ${append})`);
+            
+            if (append) {
+                await fs.promises.appendFile(filePath, content, 'utf8');
+                return `Successfully appended content to ${filePath}`;
+            } else {
+                await fs.promises.writeFile(filePath, content, 'utf8');
+                return `Successfully wrote content to ${filePath}`;
+            }
+        } catch (error) {
+            return `Error: Could not write to file '${args.file_path}' - ${error.message}`;
+        }
+    }
+
+    async executeCreateDirectory(args) {
+        try {
+            const dirPath = args.dir_path;
+            const recursive = args.recursive !== false; // Default to true
+            
+            if (process.env.DEBUG) console.log(`Creating directory: ${dirPath} (recursive: ${recursive})`);
+            
+            await fs.promises.mkdir(dirPath, { recursive });
+            return `Successfully created directory: ${dirPath}`;
+        } catch (error) {
+            if (error.code === 'EEXIST') {
+                return `Directory already exists: ${args.dir_path}`;
+            }
+            return `Error: Could not create directory '${args.dir_path}' - ${error.message}`;
         }
     }
 }

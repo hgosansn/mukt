@@ -1,5 +1,9 @@
 # Mukt AI Agent - Change Log
 
+## 2026-01-23
+
+2026-01-23: [FEATURE] Added file manipulation suite - new write_file and create_directory tools with user confirmation mechanism for destructive operations (Enter key or y/yes to confirm)  
+
 ## 2026-01-22
 
 2026-01-22: [FEATURE] Set up GitHub collaboration workflows - added automated tests on PRs, branch protection setup guide, auto-assignment of PRs to repo owner, release automation, and CODEOWNERS configuration  

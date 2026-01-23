@@ -13,6 +13,37 @@ class CLI {
         this.conversation = new Conversation();
     }
 
+    async promptQuestion(question) {
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+
+        return new Promise((resolve) => {
+            rl.question(question, (answer) => {
+                rl.close();
+                resolve(answer.trim().toLowerCase());
+            });
+        });
+    }
+
+    async confirmToolExecution(toolName, args) {
+        // Always require confirmation for file manipulation tools
+        const destructiveTools = ['write_file', 'create_directory', 'run_command'];
+        
+        if (!destructiveTools.includes(toolName)) {
+            return true; // No confirmation needed for read-only tools
+        }
+
+        console.log(`\nAbout to execute tool: ${toolName}`);
+        if (args) {
+            console.log(`Arguments: ${JSON.stringify(args, null, 2)}`);
+        }
+        
+        const response = await this.promptQuestion('Proceed with tool execution? (y/n or press Enter to confirm): ');
+        return response === 'y' || response === 'yes' || response === '';
+    }
+
     async initialize() {
         try {
             await this.toolSystem.loadTools();
@@ -27,7 +58,7 @@ class CLI {
     async startConversation() {
         if (process.env.DEBUG) {
             console.log(`Working Directory: ${process.cwd()}`);
-            console.log('Available tools: list_files, read_file, run_command');
+            console.log('Available tools: list_files, read_file, run_command, write_file, create_directory');
         }
         console.log('Starting Mukt conversation (type "quit" or "exit" to stop)');
         console.log('────────────────────────────────────────────────────────');
@@ -133,6 +164,15 @@ class CLI {
                             } catch (error) {
                                 args = {};
                                 if (process.env.DEBUG) console.log(`Warning: Could not parse tool arguments: ${error.message}`);
+                            }
+
+                            // Ask for confirmation before executing tool
+                            const confirmed = await this.confirmToolExecution(functionName, args);
+                            if (!confirmed) {
+                                const cancelMessage = `Tool execution cancelled by user: ${functionName}`;
+                                this.conversation.addMessage('tool', cancelMessage, null, toolId, functionName);
+                                console.log(cancelMessage);
+                                continue;
                             }
 
                             const toolOutput = await this.toolSystem.executeTool(functionName, args);

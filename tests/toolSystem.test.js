@@ -7,7 +7,10 @@ import ToolSystem from '../src/toolSystem.js';
 vi.mock('fs', () => ({
     default: {
         promises: {
-            readFile: vi.fn()
+            readFile: vi.fn(),
+            writeFile: vi.fn(),
+            appendFile: vi.fn(),
+            mkdir: vi.fn()
         }
     }
 }));
@@ -100,5 +103,86 @@ describe('ToolSystem', () => {
         
         const result = await toolSystem.executeTool('run_command', { command: 'fail' });
         expect(result).toContain('Command failed');
+    });
+
+    it('should execute write_file tool', async () => {
+        fs.promises.writeFile = vi.fn().mockResolvedValueOnce();
+        
+        const result = await toolSystem.executeTool('write_file', {
+            file_path: 'test.txt',
+            content: 'Hello world'
+        });
+        
+        expect(result).toBe('Successfully wrote content to test.txt');
+        expect(fs.promises.writeFile).toHaveBeenCalledWith('test.txt', 'Hello world', 'utf8');
+    });
+
+    it('should execute write_file tool with append', async () => {
+        fs.promises.appendFile = vi.fn().mockResolvedValueOnce();
+        
+        const result = await toolSystem.executeTool('write_file', {
+            file_path: 'test.txt',
+            content: 'Hello world',
+            append: true
+        });
+        
+        expect(result).toBe('Successfully appended content to test.txt');
+        expect(fs.promises.appendFile).toHaveBeenCalledWith('test.txt', 'Hello world', 'utf8');
+    });
+
+    it('should handle write_file errors', async () => {
+        fs.promises.writeFile = vi.fn().mockRejectedValueOnce(new Error('Permission denied'));
+        
+        const result = await toolSystem.executeTool('write_file', {
+            file_path: 'test.txt',
+            content: 'Hello world'
+        });
+        
+        expect(result).toMatch(/Error.*Permission denied/);
+    });
+
+    it('should execute create_directory tool', async () => {
+        fs.promises.mkdir = vi.fn().mockResolvedValueOnce();
+        
+        const result = await toolSystem.executeTool('create_directory', {
+            dir_path: 'test/dir'
+        });
+        
+        expect(result).toBe('Successfully created directory: test/dir');
+        expect(fs.promises.mkdir).toHaveBeenCalledWith('test/dir', { recursive: true });
+    });
+
+    it('should execute create_directory with recursive false', async () => {
+        fs.promises.mkdir = vi.fn().mockResolvedValueOnce();
+        
+        const result = await toolSystem.executeTool('create_directory', {
+            dir_path: 'test/dir',
+            recursive: false
+        });
+        
+        expect(result).toBe('Successfully created directory: test/dir');
+        expect(fs.promises.mkdir).toHaveBeenCalledWith('test/dir', { recursive: false });
+    });
+
+    it('should handle create_directory EEXIST error', async () => {
+        const error = new Error('Directory exists');
+        error.code = 'EEXIST';
+        fs.promises.mkdir = vi.fn().mockRejectedValueOnce(error);
+        
+        const result = await toolSystem.executeTool('create_directory', {
+            dir_path: 'existing/dir'
+        });
+        
+        expect(result).toBe('Directory already exists: existing/dir');
+    });
+
+    it('should handle create_directory other errors', async () => {
+        fs.promises.mkdir = vi.fn().mockRejectedValueOnce(new Error('Permission denied'));
+        
+        const result = await toolSystem.executeTool('create_directory', {
+            dir_path: 'test/dir'
+        });
+        
+        expect(result).toMatch(/Error.*Permission denied/);
     });
 });
