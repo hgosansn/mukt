@@ -2,6 +2,7 @@
 
 ## 2026-01-23
 
+2026-01-23: [DOCS] Updated GitHub Copilot instructions to use integration testing approach instead of API-dependent quit command testing  
 2026-01-23: [FEATURE] Added comprehensive integration testing - mocks OpenRouter API responses to test complete conversation flows without requiring API keys or network connectivity  
 2026-01-23: [FEATURE] Added file manipulation suite - new write_file and create_directory tools with user confirmation mechanism for destructive operations (Enter key or y/yes to confirm)  
 
