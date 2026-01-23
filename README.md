@@ -122,18 +122,40 @@ node index.js
 
 ## Testing
 
-Run the test suite to verify everything works:
-
+### Complete Test Suite
 ```bash
+# Run all tests (unit + integration)
+npm run test:all
+```
+
+### No-API Testing (Recommended)
+```bash
+# Test without requiring OpenRouter API key
+npm run no-api:test
+```
+
+### Individual Test Suites  
+```bash
+# Unit tests only
+npm run test:unit
+
+# Integration tests only  
+npm run test:integration
+
+# Development testing (watch mode)
 npm test
 ```
 
 Tests cover:
-- Agent initialization
-- Tool definitions and execution
-- Conversation management
-- Error handling
+- Agent initialization and model selection
+- Tool definitions and execution with confirmations
+- Complete conversation flows (mocked API responses)
+- Iterative tool execution
+- User confirmation prompts
+- Error handling and graceful degradation
 - JSON parsing/formatting
+
+**See [docs/INTEGRATION_TESTING.md](docs/INTEGRATION_TESTING.md) for detailed testing documentation.**
 
 ## Requirements
 

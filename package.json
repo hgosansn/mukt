@@ -8,11 +8,15 @@
     "start": "node index.js",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:unit": "vitest run tests/ --exclude tests/integration.test.js",
+    "test:integration": "vitest run tests/integration.test.js",
+    "test:all": "vitest run",
     "dev:test": "vitest",
     "ci:test": "vitest run --reporter=verbose",
     "dev:run": "node index.js",
     "dev:quick": "echo 'quit' | node index.js",
-    "commit:test": "npm run test:run && echo 'quit' | node index.js"
+    "commit:test": "npm run test:all && echo 'quit' | node index.js",
+    "no-api:test": "npm run test:integration"
   },
   "keywords": ["ai", "agent", "openrouter", "tools", "llm", "free", "mukt"],
   "author": "Your Name",
