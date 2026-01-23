@@ -44,25 +44,32 @@ Mukt is a modular AI agent CLI tool that provides free AI model access through O
 - Keep functions focused on single responsibility
 
 ## Testing & Development
+- **Integration Tests Preferred**: Use `npm run no-api:test` for comprehensive testing without API keys
+- **No API Dependencies**: Integration tests mock OpenRouter responses - no network or API key required
+- **Fast & Reliable**: Integration tests run in ~200ms with deterministic results
 - Never use timeout commands (timeout, gtimeout) when testing applications
-- Use simple direct commands: `echo 'quit' | node index.js` for testing CLI
 - For debugging, use DEBUG environment variables, not complex shell constructs
 - Test individual modules directly when needed rather than full application timeouts
 
 ## Standard Testing Procedures
-- **Unit Tests**: Always use `npm run test:run` for comprehensive test suite
-- **Quick CLI Test**: Use `echo 'quit' | node index.js` to verify app initialization
-- **Debug Mode Test**: Use `DEBUG=1 echo 'quit' | node index.js` to see model selection
+- **Integration Tests (Recommended)**: Use `npm run no-api:test` for complete app testing without API calls
+- **Unit Tests**: Use `npm run test:unit` for isolated module testing
+- **Complete Test Suite**: Use `npm run test:all` for both unit and integration tests
+- **Legacy CLI Test**: Use `echo 'quit' | node index.js` only when API integration testing is specifically needed
+- **Debug Mode Test**: Use `DEBUG=1 echo 'quit' | node index.js` to see model selection (requires API key)
 - **Module Testing**: Test individual modules with `node -e "import X from './src/X.js'; ..."` pattern
-- **Standard Test Questions**: Use consistent test inputs:
-  - "What is 2+2?" for basic functionality
-  - "quit" to exit gracefully
-  - Never use complex multi-line inputs in testing examples
+- **Development Testing**: Use `npm test` for watch mode during development
+- **Standard Test Scenarios**: Integration tests cover:
+  - Tool execution with user confirmations
+  - Complete conversation flows with iterative tool calls
+  - Error handling and graceful degradation
+  - Realistic API response simulation
 
 ## Debugging Commands
 - `DEBUG=1`: Show model selection and basic debug info
 - `DEBUG=2`: Show detailed model information and API parameters
-- `npm run commit:test`: Run tests + quick CLI verification
+- `npm run no-api:test`: Run comprehensive integration tests (no API key needed)
+- `npm run commit:test`: Run all tests + quick CLI verification
 
 ## Structure
 - src/: Core modules
@@ -98,6 +105,8 @@ Mukt is a modular AI agent CLI tool that provides free AI model access through O
 
 ## Commands
 - npm run dev: Start development
-- npm run test:run: Run all tests
+- npm run test:all: Run all tests (unit + integration)
+- npm run no-api:test: Run integration tests without API key
+- npm run test:unit: Run unit tests only
 - npm run commit:test: Test and quick run
 - ./scripts/commit-workflow.sh: Full workflow
