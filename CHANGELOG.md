@@ -1,5 +1,9 @@
 # Mukt AI Agent - Change Log
 
+## 2026-01-25
+
+2026-01-25: [REFACTOR] Improved tool execution loop - one tool at a time with AI analysis between each execution instead of batch processing and raw output display
+
 ## 2026-01-23
 
 2026-01-23: [DOCS] Updated GitHub Copilot instructions to use integration testing approach instead of API-dependent quit command testing  
