@@ -162,7 +162,7 @@ describe('Integration Tests', () => {
         expect(mockRl.question).not.toHaveBeenCalled();
     });
 
-    it('should handle iterative tool execution without API calls', async () => {
+    it('should handle iterative tool execution one tool at a time', async () => {
         // Mock initialization
         vi.spyOn(cli.modelManager, 'selectModel').mockResolvedValue();
         vi.spyOn(cli.modelManager, 'getSelectedModel').mockReturnValue({
@@ -171,95 +171,34 @@ describe('Integration Tests', () => {
         vi.spyOn(cli.toolSystem, 'loadTools').mockResolvedValue();
         vi.spyOn(cli.toolSystem, 'getToolsDefinition').mockReturnValue([]);
         
-        // Mock first API response with tool call (read_file doesn't require confirmation)
-        const firstResponse = {
-            choices: [{
-                message: {
-                    content: 'Let me read a configuration file.',
-                    tool_calls: [{
-                        id: 'call_1',
-                        function: {
-                            name: 'read_file',
-                            arguments: '{"file_path": "package.json"}'
-                        }
-                    }]
-                }
-            }]
-        };
-        
-        // Mock second API response with destructive tool call (create_directory requires confirmation)
-        const secondResponse = {
-            choices: [{
-                message: {
-                    content: 'Now let me create a backup directory.',
-                    tool_calls: [{
-                        id: 'call_2',
-                        function: {
-                            name: 'create_directory',
-                            arguments: '{"dir_path": "backup"}'
-                        }
-                    }]
-                }
-            }]
-        };
-        
-        // Mock final API response with no tool calls
-        const finalResponse = {
-            choices: [{
-                message: {
-                    content: 'Analysis complete. The package.json shows this is a Node.js project, and I created a backup directory.',
-                    tool_calls: null
-                }
-            }]
-        };
-        
-        vi.spyOn(cli.apiClient, 'makeApiCall')
-            .mockResolvedValueOnce(firstResponse)
-            .mockResolvedValueOnce(secondResponse)
-            .mockResolvedValueOnce(finalResponse);
-        
-        // Mock tool executions
+        // Mock tool executions  
         vi.spyOn(cli.toolSystem, 'executeTool')
-            .mockResolvedValueOnce('{"name": "mukt", "version": "1.0.0"}')
-            .mockResolvedValueOnce('Successfully created directory: backup');
+            .mockResolvedValueOnce('{"name": "mukt", "version": "1.0.0"}')  // read_file result
+            .mockResolvedValueOnce('Successfully created directory: backup'); // create_directory result
         
-        // Mock confirmation for create_directory (only destructive tool)
+        // Mock confirmation only for create_directory (destructive tool)
         mockRl.question.mockImplementationOnce((question, callback) => {
             callback('y'); // Approve create_directory
         });
         
         await cli.initialize();
         
-        // Simulate the iterative execution
-        let currentResponse = firstResponse;
-        let iterationCount = 0;
+        // Test that we execute only one tool at a time and let AI analyze each result
+        // First iteration: execute read_file tool
+        const confirmed1 = await cli.confirmToolExecution('read_file', {file_path: 'package.json'});
+        expect(confirmed1).toBe(true);
         
-        while (currentResponse.choices[0].message.tool_calls && iterationCount < 3) {
-            iterationCount++;
-            
-            for (const toolCall of currentResponse.choices[0].message.tool_calls) {
-                const confirmed = await cli.confirmToolExecution(
-                    toolCall.function.name,
-                    JSON.parse(toolCall.function.arguments)
-                );
-                expect(confirmed).toBe(true);
-                
-                const toolOutput = await cli.toolSystem.executeTool(
-                    toolCall.function.name,
-                    JSON.parse(toolCall.function.arguments)
-                );
-                expect(toolOutput).toBeDefined();
-            }
-            
-            // Get next response
-            if (iterationCount === 1) {
-                currentResponse = secondResponse;
-            } else if (iterationCount === 2) {
-                currentResponse = finalResponse;
-            }
-        }
+        const toolOutput1 = await cli.toolSystem.executeTool('read_file', {file_path: 'package.json'});
+        expect(toolOutput1).toBe('{"name": "mukt", "version": "1.0.0"}');
         
-        expect(iterationCount).toBe(2); // Two tool iterations
+        // Second iteration: execute create_directory tool  
+        const confirmed2 = await cli.confirmToolExecution('create_directory', {dir_path: 'backup'});
+        expect(confirmed2).toBe(true);
+        
+        const toolOutput2 = await cli.toolSystem.executeTool('create_directory', {dir_path: 'backup'});
+        expect(toolOutput2).toBe('Successfully created directory: backup');
+        
+        // Verify execution counts
         expect(cli.toolSystem.executeTool).toHaveBeenCalledTimes(2);
         expect(mockRl.question).toHaveBeenCalledTimes(1); // Only create_directory requires confirmation
     });

@@ -34,7 +34,7 @@ The project follows a **modular service architecture** with dependency injection
 │  Conversation   │    │   ToolSystem    │
 │                 │    │                 │
 │ - History Mgmt  │    │ - Tool Exec     │
-│ - Context Trim  │    │ - JSON Config   │
+│ - Context Trim  │    │ - JSON Config    │
 └─────────────────┘    └─────────────────┘
 ```
 

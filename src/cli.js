@@ -141,7 +141,7 @@ class CLI {
                         console.log(`Assistant: ${messageContent}`);
                     }
 
-                    // Process tools in an iterative loop until model provides final response
+                    // Process tools one at a time in iterative loop - let AI analyze each tool result
                     let currentToolCalls = toolCalls;
                     let iterationCount = 0;
                     const maxIterations = 10; // Prevent infinite loops
@@ -149,40 +149,41 @@ class CLI {
                     while (currentToolCalls && currentToolCalls.length > 0 && iterationCount < maxIterations) {
                         iterationCount++;
                         if (process.env.DEBUG) console.log(`\n--- Tool Iteration ${iterationCount} ---`);
-                        if (process.env.DEBUG) console.log(`Processing ${currentToolCalls.length} tool call(s)...`);
 
-                        // Execute all tool calls in this iteration
-                        for (const toolCall of currentToolCalls) {
-                            const { id: toolId, function: func } = toolCall;
-                            const { name: functionName, arguments: functionArgs } = func;
+                        // Execute ONE tool at a time to allow AI to analyze each result
+                        const toolCall = currentToolCalls[0]; // Take first tool call
+                        const { id: toolId, function: func } = toolCall;
+                        const { name: functionName, arguments: functionArgs } = func;
 
-                            if (process.env.DEBUG) console.log(`Using tool: ${functionName}`);
+                        if (process.env.DEBUG) console.log(`Using tool: ${functionName}`);
 
-                            let args;
-                            try {
-                                args = typeof functionArgs === 'string' ? JSON.parse(functionArgs) : functionArgs;
-                            } catch (error) {
-                                args = {};
-                                if (process.env.DEBUG) console.log(`Warning: Could not parse tool arguments: ${error.message}`);
-                            }
-
-                            // Ask for confirmation before executing tool
-                            const confirmed = await this.confirmToolExecution(functionName, args);
-                            if (!confirmed) {
-                                const cancelMessage = `Tool execution cancelled by user: ${functionName}`;
-                                this.conversation.addMessage('tool', cancelMessage, null, toolId, functionName);
-                                console.log(cancelMessage);
-                                continue;
-                            }
-
-                            const toolOutput = await this.toolSystem.executeTool(functionName, args);
-                            
-                            this.conversation.addMessage('tool', toolOutput, null, toolId, functionName);
-                            
-                            console.log(toolOutput);
+                        let args;
+                        try {
+                            args = typeof functionArgs === 'string' ? JSON.parse(functionArgs) : functionArgs;
+                        } catch (error) {
+                            args = {};
+                            if (process.env.DEBUG) console.log(`Warning: Could not parse tool arguments: ${error.message}`);
                         }
 
-                        // Get model's response after tool execution
+                        // Ask for confirmation before executing tool
+                        const confirmed = await this.confirmToolExecution(functionName, args);
+                        if (!confirmed) {
+                            const cancelMessage = `Tool execution cancelled by user: ${functionName}`;
+                            this.conversation.addMessage('tool', cancelMessage, null, toolId, functionName);
+                            console.log(cancelMessage);
+                            
+                            // Remove this cancelled tool and continue with remaining tools
+                            currentToolCalls = currentToolCalls.slice(1);
+                            if (currentToolCalls.length === 0) break;
+                            continue;
+                        }
+
+                        const toolOutput = await this.toolSystem.executeTool(functionName, args);
+                        this.conversation.addMessage('tool', toolOutput, null, toolId, functionName);
+
+                        // Don't print raw tool output - let AI analyze and respond
+
+                        // Get model's response after this single tool execution
                         try {
                             const followUpResponse = await this.apiClient.makeApiCall(
                                 this.modelManager.getSelectedModel(),
@@ -202,18 +203,18 @@ class CLI {
                             // Add the assistant's response to conversation
                             this.conversation.addMessage('assistant', followUpMessage, followUpToolCalls);
 
-                            // Show any intermediate thinking/message from the assistant
+                            // Show AI's analysis/response instead of raw tool output
                             if (followUpMessage) {
                                 if (followUpToolCalls && followUpToolCalls.length > 0) {
-                                    // This is an intermediate thinking message before more tools
-                                    console.log(`\nAssistant (thinking): ${followUpMessage}`);
+                                    // AI has more tools to run after analyzing this result
+                                    console.log(`\nAssistant: ${followUpMessage}`);
                                 } else {
-                                    // This is the final response
+                                    // This is the final response after analyzing the tool result
                                     console.log(`\nAssistant: ${followUpMessage}`);
                                 }
                             }
 
-                            // Prepare for next iteration or exit
+                            // For next iteration: use AI's new tool calls, not remaining from previous batch
                             currentToolCalls = followUpToolCalls;
                             
                         } catch (error) {
