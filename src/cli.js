@@ -63,6 +63,38 @@ class CLI {
         console.log('Starting Mukt conversation (type "quit" or "exit" to stop)');
         console.log('────────────────────────────────────────────────────────');
 
+        const rl = this.createReadlineInterface();
+        const question = this.createQuestionFunction(rl);
+
+        try {
+            while (!rl.closed) {
+                try {
+                    console.log('');
+                    const userPrompt = await question('You: ');
+
+                    if (['quit', 'exit', 'stop'].includes(userPrompt.toLowerCase().trim())) {
+                        console.log('Goodbye!');
+                        break;
+                    }
+
+                    if (!userPrompt.trim()) break;
+
+                    await this.handleUserInput(userPrompt);
+                    console.log('────────────────────────────────────────────────────────');
+
+                } catch (error) {
+                    const shouldContinue = this.handleConversationError(error, rl);
+                    if (!shouldContinue) break;
+                }
+            }
+        } catch (error) {
+            console.error(`Fatal error in conversation loop: ${error.message}`);
+        } finally {
+            this.cleanup(rl);
+        }
+    }
+
+    createReadlineInterface() {
         const rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout
@@ -78,179 +110,154 @@ class CLI {
             console.log('\nSession ended');
         });
 
-        const question = (prompt) => new Promise((resolve, reject) => {
+        return rl;
+    }
+
+    createQuestionFunction(rl) {
+        return (prompt) => new Promise((resolve, reject) => {
             if (rl.closed) {
                 reject(new Error('Readline interface is closed'));
                 return;
             }
             rl.question(prompt, resolve);
         });
+    }
 
-        try {
-            while (!rl.closed) {
-                try {
-                    console.log('');
-                    const userPrompt = await question('You: ');
+    async handleUserInput(userPrompt) {
+        this.conversation.addMessage('user', userPrompt);
 
-                    if (['quit', 'exit', 'stop'].includes(userPrompt.toLowerCase().trim())) {
-                        console.log('Goodbye!');
-                        break;
-                    }
-
-                    if (!userPrompt.trim()) continue;
-
-                    this.conversation.addMessage('user', userPrompt);
-
-                    if (process.env.DEBUG) {
-                        console.log('Assistant: Thinking...');
-                        console.log(`Conversation has ${this.conversation.getMessageCount()} messages`);
-                        console.log(`Sending ${this.conversation.getByteSize()} bytes to API...`);
-                    }
-
-                    let response;
-                    
-                    try {
-                        response = await this.apiClient.makeApiCall(
-                            this.modelManager.getSelectedModel(),
-                            this.conversation.getMessages(),
-                            this.toolSystem.getToolsDefinition()
-                        );
-                    } catch (apiError) {
-                        console.error(`API Error: ${apiError.message}`);
-                        if (apiError.message.includes('tool use')) {
-                            console.error('Note: This model does not support tool use (function calling)');
-                        } else if (apiError.message.includes('data policy')) {
-                            console.error('Note: This model has data policy restrictions');
-                        }
-                        console.log('────────────────────────────────────────────────────────');
-                        continue;
-                    }
-
-                    const choice = response.choices?.[0];
-                    if (!choice) {
-                        console.error('Error: No response from API');
-                        continue;
-                    }
-
-                    const messageContent = choice.message?.content || '';
-                    const toolCalls = choice.message?.tool_calls || null;
-
-                    this.conversation.addMessage('assistant', messageContent, toolCalls);
-
-                    if (messageContent) {
-                        console.log(`Assistant: ${messageContent}`);
-                    }
-
-                    // Process tools one at a time in iterative loop - let AI analyze each tool result
-                    let currentToolCalls = toolCalls;
-                    let iterationCount = 0;
-                    const maxIterations = 10; // Prevent infinite loops
-
-                    while (currentToolCalls && currentToolCalls.length > 0 && iterationCount < maxIterations) {
-                        iterationCount++;
-                        if (process.env.DEBUG) console.log(`\n--- Tool Iteration ${iterationCount} ---`);
-
-                        // Execute ONE tool at a time to allow AI to analyze each result
-                        const toolCall = currentToolCalls[0]; // Take first tool call
-                        const { id: toolId, function: func } = toolCall;
-                        const { name: functionName, arguments: functionArgs } = func;
-
-                        if (process.env.DEBUG) console.log(`Using tool: ${functionName}`);
-
-                        let args;
-                        try {
-                            args = typeof functionArgs === 'string' ? JSON.parse(functionArgs) : functionArgs;
-                        } catch (error) {
-                            args = {};
-                            if (process.env.DEBUG) console.log(`Warning: Could not parse tool arguments: ${error.message}`);
-                        }
-
-                        // Ask for confirmation before executing tool
-                        const confirmed = await this.confirmToolExecution(functionName, args);
-                        if (!confirmed) {
-                            const cancelMessage = `Tool execution cancelled by user: ${functionName}`;
-                            this.conversation.addMessage('tool', cancelMessage, null, toolId, functionName);
-                            console.log(cancelMessage);
-                            
-                            // Remove this cancelled tool and continue with remaining tools
-                            currentToolCalls = currentToolCalls.slice(1);
-                            if (currentToolCalls.length === 0) break;
-                            continue;
-                        }
-
-                        const toolOutput = await this.toolSystem.executeTool(functionName, args);
-                        this.conversation.addMessage('tool', toolOutput, null, toolId, functionName);
-
-                        // Don't print raw tool output - let AI analyze and respond
-
-                        // Get model's response after this single tool execution
-                        try {
-                            const followUpResponse = await this.apiClient.makeApiCall(
-                                this.modelManager.getSelectedModel(),
-                                this.conversation.getMessages(),
-                                this.toolSystem.getToolsDefinition()
-                            );
-                            
-                            const followUpChoice = followUpResponse.choices?.[0];
-                            if (!followUpChoice) {
-                                console.error('Error: No response from API after tool execution');
-                                break;
-                            }
-
-                            const followUpMessage = followUpChoice.message?.content || '';
-                            const followUpToolCalls = followUpChoice.message?.tool_calls || null;
-
-                            // Add the assistant's response to conversation
-                            this.conversation.addMessage('assistant', followUpMessage, followUpToolCalls);
-
-                            // Show AI's analysis/response instead of raw tool output
-                            if (followUpMessage) {
-                                if (followUpToolCalls && followUpToolCalls.length > 0) {
-                                    // AI has more tools to run after analyzing this result
-                                    console.log(`\nAssistant: ${followUpMessage}`);
-                                } else {
-                                    // This is the final response after analyzing the tool result
-                                    console.log(`\nAssistant: ${followUpMessage}`);
-                                }
-                            }
-
-                            // For next iteration: use AI's new tool calls, not remaining from previous batch
-                            currentToolCalls = followUpToolCalls;
-                            
-                        } catch (error) {
-                            console.error(`Error: Follow-up API request failed: ${error.message}`);
-                            if (error.message.includes('tool use')) {
-                                console.error('Note: This model does not support tool use (function calling)');
-                            }
-                            break;
-                        }
-                    }
-
-                    if (iterationCount >= maxIterations) {
-                        console.log('\nNote: Reached maximum tool iterations limit to prevent infinite loops.');
-                    }
-
-                    console.log('────────────────────────────────────────────────────────');
-
-                } catch (error) {
-                    if (error.message.includes('readline') || error.message.includes('closed')) {
-                        console.error('Input stream closed unexpectedly');
-                        break;
-                    }
-                    
-                    // Handle model not found errors
-                    console.error(`Error: ${error.message}`);
-                    if (error.message.includes('tool use')) {
-                        console.error('Note: This model does not support tool use (function calling)');
-                    }
-                    console.log('────────────────────────────────────────────────────────');
-                }
-            }
-        } catch (error) {
-            console.error(`Fatal error in conversation loop: ${error.message}`);
-        } finally {
-            this.cleanup(rl);
+        if (process.env.DEBUG) {
+            console.log('Assistant: Thinking...');
+            console.log(`Conversation has ${this.conversation.getMessageCount()} messages`);
+            console.log(`Sending ${this.conversation.getByteSize()} bytes to API...`);
         }
+
+        const initialResponse = await this.getAIResponse();
+        if (!initialResponse) return;
+
+        const { content, toolCalls } = initialResponse;
+        this.conversation.addMessage('assistant', content, toolCalls);
+
+        // Show initial AI response if any
+        if (content) {
+            console.log(`Assistant: ${content}`);
+        }
+
+        // Process tools iteratively if AI wants to use them
+        if (toolCalls && toolCalls.length > 0) {
+            await this.executeToolsIteratively(toolCalls);
+        }
+    }
+
+    async getAIResponse() {
+        try {
+            const response = await this.apiClient.makeApiCall(
+                this.modelManager.getSelectedModel(),
+                this.conversation.getMessages(),
+                this.toolSystem.getToolsDefinition()
+            );
+
+            const choice = response.choices?.[0];
+            if (!choice) {
+                console.error('Error: No response from API');
+                return null;
+            }
+
+            return {
+                content: choice.message?.content || '',
+                toolCalls: choice.message?.tool_calls || null
+            };
+        } catch (error) {
+            this.handleAPIError(error);
+            return null;
+        }
+    }
+
+    async executeToolsIteratively(toolCalls) {
+        let currentToolCalls = toolCalls;
+        let iterationCount = 0;
+        const maxIterations = 10;
+
+        while (currentToolCalls && currentToolCalls.length > 0 && iterationCount < maxIterations) {
+            iterationCount++;
+            if (process.env.DEBUG) console.log(`\n--- Tool Iteration ${iterationCount} ---`);
+
+            const nextToolCalls = await this.executeSingleToolAndGetResponse(currentToolCalls[0]);
+            currentToolCalls = nextToolCalls;
+        }
+
+        if (iterationCount >= maxIterations) {
+            console.log('\nNote: Reached maximum tool iterations limit to prevent infinite loops.');
+        }
+    }
+
+    async executeSingleToolAndGetResponse(toolCall) {
+        const { id: toolId, function: func } = toolCall;
+        const { name: functionName, arguments: functionArgs } = func;
+
+        if (process.env.DEBUG) console.log(`Using tool: ${functionName}`);
+
+        const args = this.parseToolArguments(functionArgs);
+        
+        // Get user confirmation if needed
+        const confirmed = await this.confirmToolExecution(functionName, args);
+        if (!confirmed) {
+            const cancelMessage = `Tool execution cancelled by user: ${functionName}`;
+            this.conversation.addMessage('tool', cancelMessage, null, toolId, functionName);
+            console.log(cancelMessage);
+            return null; // Stop tool execution
+        }
+
+        // Execute tool
+        const toolOutput = await this.toolSystem.executeTool(functionName, args);
+        this.conversation.addMessage('tool', toolOutput, null, toolId, functionName);
+
+        // Get AI's analysis of the tool result
+        const aiResponse = await this.getAIResponse();
+        if (!aiResponse) return null;
+
+        // Add AI's response to conversation
+        this.conversation.addMessage('assistant', aiResponse.content, aiResponse.toolCalls);
+
+        // Display AI's analysis (not raw tool output)
+        if (aiResponse.content) {
+            console.log(`\nAssistant: ${aiResponse.content}`);
+        }
+
+        // Return AI's new tool calls for next iteration
+        return aiResponse.toolCalls;
+    }
+
+    parseToolArguments(functionArgs) {
+        try {
+            return typeof functionArgs === 'string' ? JSON.parse(functionArgs) : functionArgs;
+        } catch (error) {
+            if (process.env.DEBUG) console.log(`Warning: Could not parse tool arguments: ${error.message}`);
+            return {};
+        }
+    }
+
+    handleAPIError(error) {
+        console.error(`API Error: ${error.message}`);
+        if (error.message.includes('tool use')) {
+            console.error('Note: This model does not support tool use (function calling)');
+        } else if (error.message.includes('data policy')) {
+            console.error('Note: This model has data policy restrictions');
+        }
+    }
+
+    handleConversationError(error, rl) {
+        if (error.message.includes('readline') || error.message.includes('closed')) {
+            console.error('Input stream closed unexpectedly');
+            return false; // Break the loop
+        }
+        
+        console.error(`Error: ${error.message}`);
+        if (error.message.includes('tool use')) {
+            console.error('Note: This model does not support tool use (function calling)');
+        }
+        console.log('────────────────────────────────────────────────────────');
+        return true; // Continue the loop
     }
 
     cleanup(rl) {
