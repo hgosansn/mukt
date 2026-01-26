@@ -182,8 +182,23 @@ class CLI {
             iterationCount++;
             if (process.env.DEBUG) console.log(`\n--- Tool Iteration ${iterationCount} ---`);
 
-            const nextToolCalls = await this.executeSingleToolAndGetResponse(currentToolCalls[0]);
-            currentToolCalls = nextToolCalls;
+            // Process ALL tool calls in the current batch
+            await this.executeToolBatch(currentToolCalls);
+            
+            // Get AI's response to the tool results
+            const aiResponse = await this.getAIResponse();
+            if (!aiResponse) break;
+
+            // Add AI's response to conversation
+            this.conversation.addMessage('assistant', aiResponse.content, aiResponse.toolCalls);
+
+            // Display AI's analysis
+            if (aiResponse.content) {
+                console.log(`\nAssistant: ${aiResponse.content}`);
+            }
+
+            // Continue with new tool calls if any
+            currentToolCalls = aiResponse.toolCalls;
         }
 
         if (iterationCount >= maxIterations) {
@@ -191,41 +206,30 @@ class CLI {
         }
     }
 
-    async executeSingleToolAndGetResponse(toolCall) {
-        const { id: toolId, function: func } = toolCall;
-        const { name: functionName, arguments: functionArgs } = func;
+    async executeToolBatch(toolCalls) {
+        for (const toolCall of toolCalls) {
+            const { id: toolId, function: func } = toolCall;
+            const { name: functionName, arguments: functionArgs } = func;
 
-        if (process.env.DEBUG) console.log(`Using tool: ${functionName}`);
+            if (process.env.DEBUG) console.log(`Using tool: ${functionName}`);
 
-        const args = this.parseToolArguments(functionArgs);
-        
-        // Get user confirmation if needed
-        const confirmed = await this.confirmToolExecution(functionName, args);
-        if (!confirmed) {
-            const cancelMessage = `Tool execution cancelled by user: ${functionName}`;
-            this.conversation.addMessage('tool', cancelMessage, null, toolId, functionName);
-            console.log(cancelMessage);
-            return null; // Stop tool execution
+            const args = this.parseToolArguments(functionArgs);
+            
+            // Get user confirmation if needed
+            const confirmed = await this.confirmToolExecution(functionName, args);
+            if (!confirmed) {
+                const cancelMessage = `Tool execution cancelled by user: ${functionName}`;
+                this.conversation.addMessage('tool', cancelMessage, null, toolId, functionName);
+                console.log(cancelMessage);
+                continue; // Skip this tool but continue with others
+            }
+
+            // Execute tool
+            const toolOutput = await this.toolSystem.executeTool(functionName, args);
+            this.conversation.addMessage('tool', toolOutput, null, toolId, functionName);
+
+            if (process.env.DEBUG) console.log(`Tool ${functionName} completed`);
         }
-
-        // Execute tool
-        const toolOutput = await this.toolSystem.executeTool(functionName, args);
-        this.conversation.addMessage('tool', toolOutput, null, toolId, functionName);
-
-        // Get AI's analysis of the tool result
-        const aiResponse = await this.getAIResponse();
-        if (!aiResponse) return null;
-
-        // Add AI's response to conversation
-        this.conversation.addMessage('assistant', aiResponse.content, aiResponse.toolCalls);
-
-        // Display AI's analysis (not raw tool output)
-        if (aiResponse.content) {
-            console.log(`\nAssistant: ${aiResponse.content}`);
-        }
-
-        // Return AI's new tool calls for next iteration
-        return aiResponse.toolCalls;
     }
 
     parseToolArguments(functionArgs) {
