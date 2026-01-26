@@ -77,7 +77,16 @@ class CLI {
                         break;
                     }
 
-                    if (!userPrompt.trim()) break;
+                    // Don't exit on empty input - could be stdin closed from pipe
+                    // Only exit if user explicitly wants to quit
+                    if (!userPrompt.trim()) {
+                        // If stdin is closed (like from a pipe), wait a bit then exit gracefully
+                        if (process.stdin.destroyed || process.stdin.readableEnded) {
+                            console.log('\nInput stream closed. Goodbye!');
+                            break;
+                        }
+                        continue; // Skip empty input but don't exit
+                    }
 
                     await this.handleUserInput(userPrompt);
                     console.log('────────────────────────────────────────────────────────');
@@ -100,6 +109,9 @@ class CLI {
             output: process.stdout
         });
 
+        // Detect if we're reading from a pipe/redirect
+        const isPiped = !process.stdin.isTTY;
+        
         rl.on('error', (error) => {
             console.error(`Readline error: ${error.message}`);
             this.cleanup(rl);
@@ -107,7 +119,9 @@ class CLI {
         });
 
         rl.on('close', () => {
-            console.log('\nSession ended');
+            if (!isPiped) {
+                console.log('\nSession ended');
+            }
         });
 
         return rl;
@@ -119,6 +133,14 @@ class CLI {
                 reject(new Error('Readline interface is closed'));
                 return;
             }
+            
+            // If stdin is closed/destroyed, don't try to prompt
+            if (process.stdin.destroyed || process.stdin.readableEnded) {
+                // For piped input, return empty to trigger exit after processing
+                setTimeout(() => resolve('quit'), 100);
+                return;
+            }
+            
             rl.question(prompt, resolve);
         });
     }
@@ -146,6 +168,8 @@ class CLI {
         // Process tools iteratively if AI wants to use them
         if (toolCalls && toolCalls.length > 0) {
             await this.executeToolsIteratively(toolCalls);
+        } else if (!content) {
+            console.log('Assistant: (No response received)');
         }
     }
 
@@ -186,15 +210,27 @@ class CLI {
             await this.executeToolBatch(currentToolCalls);
             
             // Get AI's response to the tool results
+            if (process.env.DEBUG) {
+                console.log('Getting AI response to tool results...');
+                console.log(`Conversation state: ${this.conversation.getMessageCount()} messages`);
+                if (process.env.DEBUG === '2') {
+                    console.log('Last few messages:', JSON.stringify(this.conversation.getMessages().slice(-3), null, 2));
+                }
+            }
             const aiResponse = await this.getAIResponse();
-            if (!aiResponse) break;
+            if (!aiResponse) {
+                if (process.env.DEBUG) console.log('No AI response received');
+                break;
+            }
 
             // Add AI's response to conversation
             this.conversation.addMessage('assistant', aiResponse.content, aiResponse.toolCalls);
 
             // Display AI's analysis
             if (aiResponse.content) {
-                console.log(`\nAssistant: ${aiResponse.content}`);
+                console.log(`Assistant: ${aiResponse.content}`);
+            } else if (process.env.DEBUG) {
+                console.log('AI response had no content');
             }
 
             // Continue with new tool calls if any
