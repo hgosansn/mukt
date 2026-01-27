@@ -27,6 +27,21 @@ class CLI {
         });
     }
 
+    // Tool confirmation for destructive operations
+    async confirmToolExecution(toolName, args) {
+        const destructiveTools = ['write_file', 'create_directory', 'run_command'];
+        
+        if (!destructiveTools.includes(toolName)) {
+            return true; // No confirmation needed for read-only tools
+        }
+
+        console.log(`About to execute tool: ${toolName}`);
+        console.log('Arguments:', JSON.stringify(args, null, 2));
+        
+        const response = await this.promptQuestion('Proceed with tool execution? (Enter to confirm, n to cancel): ');
+        return response !== 'n' && response !== 'no';
+    }
+
     async initialize() {
         try {
             await this.toolSystem.loadTools();
@@ -39,44 +54,68 @@ class CLI {
     }
 
     async startConversation() {
+        this.printStartupInfo();
+        const rl = this.createReadlineInterface();
+        const question = this.createQuestionFunction(rl);
+
+        try {
+            await this.handleConversationLoop(question);
+        } catch (error) {
+            console.error(`Fatal error in conversation loop: ${error.message}`);
+        } finally {
+            this.cleanup(rl);
+        }
+    }
+
+    printStartupInfo() {
         if (process.env.DEBUG) {
             console.log(`Working Directory: ${process.cwd()}`);
             console.log('Available tools: list_files, read_file, run_command, write_file, create_directory');
         }
         console.log('Starting Mukt conversation (type "quit" or "exit" to stop)');
         console.log('────────────────────────────────────────────────────────');
+    }
 
-        const rl = this.createReadlineInterface();
-        const question = this.createQuestionFunction(rl);
-
-        try {
-            while (!rl.closed) {
-                try {
-                    const userPrompt = await question('You: ');
-
-                    // Don't exit on empty input - could be stdin closed from pipe
-                    // Only exit if user explicitly wants to quit
-                    if (!userPrompt.trim()) {
-                        // If stdin is closed (like from a pipe), wait a bit then exit gracefully
-                        if (process.stdin.destroyed || process.stdin.readableEnded) {
-                            console.log('\nInput stream closed. Goodbye!');
-                            break;
-                        }
-                        continue; // Skip empty input but don't exit
-                    }
-
-                    await this.handleUserInput(userPrompt);
-
-                } catch (error) {
-                    const shouldContinue = this.handleConversationError(error, rl);
-                    if (!shouldContinue) break;
+    async handleConversationLoop(question) {
+        while (true) {
+            try {
+                const userInput = await this.getUserInput(question);
+                
+                if (this.shouldExitConversation(userInput)) {
+                    console.log('\nGoodbye!');
+                    break;
                 }
+                
+                if (this.shouldSkipInput(userInput)) {
+                    if (this.isStreamClosed()) {
+                        console.log('\nInput stream closed. Goodbye!');
+                        break;
+                    }
+                    continue;
+                }
+
+                await this.handleUserInput(userInput);
+            } catch (error) {
+                const shouldContinue = this.handleConversationError(error);
+                if (!shouldContinue) break;
             }
-        } catch (error) {
-            console.error(`Fatal error in conversation loop: ${error.message}`);
-        } finally {
-            this.cleanup(rl);
         }
+    }
+
+    async getUserInput(question) {
+        return await question('You: ');
+    }
+
+    shouldExitConversation(input) {
+        return input === 'quit' || input === 'exit';
+    }
+
+    shouldSkipInput(input) {
+        return !input.trim();
+    }
+
+    isStreamClosed() {
+        return process.stdin.destroyed || process.stdin.readableEnded;
     }
 
     createReadlineInterface() {
@@ -122,30 +161,43 @@ class CLI {
     }
 
     async handleUserInput(userPrompt) {
+        // Add user message to conversation
         this.conversation.addMessage('user', userPrompt);
-
+        
         console.log('Assistant: Thinking...');
         if (process.env.DEBUG) {
             console.log(`Conversation has ${this.conversation.getMessageCount()} messages`);
             console.log(`Sending ${this.conversation.getByteSize()} bytes to API...`);
         }
 
-        const initialResponse = await this.getAIResponse();
-        if (!initialResponse) return;
+        // Get initial AI response
+        const aiResponse = await this.getAIResponse();
+        if (!aiResponse) return;
+        
+        // Process AI response and any tool calls
+        await this.processAIResponse(aiResponse);
+        
+        console.log('────────────────────────────────────────────────────────');
+    }
 
-        const { content, toolCalls } = initialResponse;
-        this.conversation.addMessage('assistant', content, toolCalls);
-
-        // Show initial AI response if any
-        if (content) {
-            console.log(`Assistant: ${content}`);
-        }
-
-        // Process tools iteratively if AI wants to use them
-        if (toolCalls && toolCalls.length > 0) {
-            await this.executeToolsIteratively(toolCalls);
-        } else if (!content) {
+    async processAIResponse(aiResponse) {
+        // Add AI response to conversation
+        this.conversation.addMessage('assistant', aiResponse.content, aiResponse.toolCalls);
+        
+        // Display AI content if present
+        this.displayAIContent(aiResponse.content);
+        
+        // Handle tool calls if any
+        if (aiResponse.toolCalls && aiResponse.toolCalls.length > 0) {
+            await this.executeToolsIteratively(aiResponse.toolCalls);
+        } else if (!aiResponse.content) {
             console.log('Assistant: (No response received)');
+        }
+    }
+
+    displayAIContent(content) {
+        if (content && content.trim()) {
+            console.log(`Assistant: ${content}`);
         }
     }
 
@@ -226,19 +278,42 @@ class CLI {
 
     async executeToolBatch(toolCalls) {
         for (const toolCall of toolCalls) {
-            const { id: toolId, function: func } = toolCall;
-            const { name: functionName, arguments: functionArgs } = func;
+            const success = await this.executeToolCall(toolCall);
+            if (!success) {
+                console.log('Tool execution cancelled or failed.');
+                break;
+            }
+        }
+    }
 
-            if (process.env.DEBUG) console.log(`Using tool: ${functionName}`);
+    async executeToolCall(toolCall) {
+        const { id: toolId, function: func } = toolCall;
+        const { name: functionName, arguments: functionArgs } = func;
 
-            const args = this.parseToolArguments(functionArgs);
+        if (process.env.DEBUG) console.log(`Using tool: ${functionName}`);
 
+        const args = this.parseToolArguments(functionArgs);
+        
+        // Ask for confirmation if needed (only in interactive mode)
+        if (process.stdin.isTTY) {
+            const confirmed = await this.confirmToolExecution(functionName, args);
+            if (!confirmed) {
+                console.log(`Tool ${functionName} cancelled by user.`);
+                return false;
+            }
+        }
+
+        try {
             // Execute tool
             const toolOutput = await this.toolSystem.executeTool(functionName, args);
             console.log(`Tool ${functionName} output: ${toolOutput}`);
             this.conversation.addMessage('tool', toolOutput, null, toolId, functionName);
 
             if (process.env.DEBUG) console.log(`Tool ${functionName} completed`);
+            return true;
+        } catch (error) {
+            console.error(`Tool ${functionName} failed: ${error.message}`);
+            return false;
         }
     }
 
