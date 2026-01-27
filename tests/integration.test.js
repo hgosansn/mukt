@@ -232,6 +232,81 @@ describe('Integration Tests', () => {
         expect(cli.apiClient.makeApiCall).toHaveBeenCalled();
     });
 
+    it('should handle empty AI response content after tool execution', async () => {
+        // Mock initialization
+        vi.spyOn(cli.modelManager, 'selectModel').mockResolvedValue();
+        vi.spyOn(cli.modelManager, 'getSelectedModel').mockReturnValue({
+            id: 'mock/test-model:free',
+            context_length: 100000
+        });
+        vi.spyOn(cli.toolSystem, 'loadTools').mockResolvedValue();
+        vi.spyOn(cli.toolSystem, 'getToolsDefinition').mockReturnValue([
+            {
+                type: 'function',
+                function: {
+                    name: 'list_files',
+                    description: 'List files in directory',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            path: { type: 'string', description: 'Directory path' }
+                        }
+                    }
+                }
+            }
+        ]);
+        
+        // Mock tool execution
+        vi.spyOn(cli.toolSystem, 'executeTool').mockResolvedValue('file1.txt\nfile2.txt\ndir1/');
+        
+        // Mock API responses: first with tool call, then empty content response
+        const apiCallSpy = vi.spyOn(cli.apiClient, 'makeApiCall')
+            .mockResolvedValueOnce({
+                choices: [{
+                    message: {
+                        content: '',  // Empty content with tool calls
+                        tool_calls: [{
+                            id: 'call_123',
+                            type: 'function',
+                            function: { name: 'list_files', arguments: '{"path": "."}' }
+                        }]
+                    }
+                }]
+            })
+            .mockResolvedValueOnce({
+                choices: [{
+                    message: {
+                        content: '',  // Empty content after tool execution
+                        tool_calls: null
+                    }
+                }]
+            });
+        
+        await cli.initialize();
+        
+        // Add user message
+        cli.conversation.addMessage('user', 'What files are here?');
+        
+        // Execute the tool iteration
+        await cli.executeToolsIteratively([{
+            id: 'call_123',
+            type: 'function',
+            function: { name: 'list_files', arguments: '{"path": "."}' }
+        }]);
+        
+        // Verify that tool output was logged
+        expect(mockConsoleLog).toHaveBeenCalledWith('Tool list_files output: file1.txt\nfile2.txt\ndir1/');
+        
+        // Verify that user-friendly message was shown for empty AI response
+        expect(mockConsoleLog).toHaveBeenCalledWith('Assistant: [Analysis complete - see tool output above]');
+        
+        // Verify tool was executed
+        expect(cli.toolSystem.executeTool).toHaveBeenCalledWith('list_files', { path: '.' });
+        
+        // Verify API was called twice (initial tool call + response after tool execution)
+        expect(cli.apiClient.makeApiCall).toHaveBeenCalledTimes(2);
+    });
+
     it('should handle complete conversation flow from user input to final response', async () => {
         // Mock initialization
         vi.spyOn(cli.modelManager, 'selectModel').mockResolvedValue();

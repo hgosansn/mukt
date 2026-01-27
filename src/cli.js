@@ -27,23 +27,6 @@ class CLI {
         });
     }
 
-    async confirmToolExecution(toolName, args) {
-        // Always require confirmation for file manipulation tools
-        const destructiveTools = ['write_file', 'create_directory', 'run_command'];
-        
-        if (!destructiveTools.includes(toolName)) {
-            return true; // No confirmation needed for read-only tools
-        }
-
-        console.log(`\nAbout to execute tool: ${toolName}`);
-        if (args) {
-            console.log(`Arguments: ${JSON.stringify(args, null, 2)}`);
-        }
-        
-        const response = await this.promptQuestion('Proceed with tool execution? (y/n or press Enter to confirm): ');
-        return response === 'y' || response === 'yes' || response === '';
-    }
-
     async initialize() {
         try {
             await this.toolSystem.loadTools();
@@ -69,13 +52,7 @@ class CLI {
         try {
             while (!rl.closed) {
                 try {
-                    console.log('');
                     const userPrompt = await question('You: ');
-
-                    if (['quit', 'exit', 'stop'].includes(userPrompt.toLowerCase().trim())) {
-                        console.log('Goodbye!');
-                        break;
-                    }
 
                     // Don't exit on empty input - could be stdin closed from pipe
                     // Only exit if user explicitly wants to quit
@@ -89,7 +66,6 @@ class CLI {
                     }
 
                     await this.handleUserInput(userPrompt);
-                    console.log('────────────────────────────────────────────────────────');
 
                 } catch (error) {
                     const shouldContinue = this.handleConversationError(error, rl);
@@ -148,8 +124,8 @@ class CLI {
     async handleUserInput(userPrompt) {
         this.conversation.addMessage('user', userPrompt);
 
+        console.log('Assistant: Thinking...');
         if (process.env.DEBUG) {
-            console.log('Assistant: Thinking...');
             console.log(`Conversation has ${this.conversation.getMessageCount()} messages`);
             console.log(`Sending ${this.conversation.getByteSize()} bytes to API...`);
         }
@@ -217,6 +193,7 @@ class CLI {
                     console.log('Last few messages:', JSON.stringify(this.conversation.getMessages().slice(-3), null, 2));
                 }
             }
+
             const aiResponse = await this.getAIResponse();
             if (!aiResponse) {
                 if (process.env.DEBUG) console.log('No AI response received');
@@ -229,8 +206,13 @@ class CLI {
             // Display AI's analysis
             if (aiResponse.content) {
                 console.log(`Assistant: ${aiResponse.content}`);
-            } else if (process.env.DEBUG) {
-                console.log('AI response had no content');
+            } else {
+                // Show helpful message when AI doesn't provide commentary
+                console.log('Assistant: [Analysis complete - see tool output above]');
+                if (process.env.DEBUG) {
+                    console.log('Debug: AI response had no content');
+                    console.log('Debug: Response details:', JSON.stringify(aiResponse, null, 2));
+                }
             }
 
             // Continue with new tool calls if any
@@ -250,18 +232,10 @@ class CLI {
             if (process.env.DEBUG) console.log(`Using tool: ${functionName}`);
 
             const args = this.parseToolArguments(functionArgs);
-            
-            // Get user confirmation if needed
-            const confirmed = await this.confirmToolExecution(functionName, args);
-            if (!confirmed) {
-                const cancelMessage = `Tool execution cancelled by user: ${functionName}`;
-                this.conversation.addMessage('tool', cancelMessage, null, toolId, functionName);
-                console.log(cancelMessage);
-                continue; // Skip this tool but continue with others
-            }
 
             // Execute tool
             const toolOutput = await this.toolSystem.executeTool(functionName, args);
+            console.log(`Tool ${functionName} output: ${toolOutput}`);
             this.conversation.addMessage('tool', toolOutput, null, toolId, functionName);
 
             if (process.env.DEBUG) console.log(`Tool ${functionName} completed`);
