@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "test": "vitest",
+    "test": "vitest --run",
     "test:run": "vitest run",
     "test:unit": "vitest run tests/ --exclude tests/integration.test.js",
     "test:integration": "vitest run tests/integration.test.js",
