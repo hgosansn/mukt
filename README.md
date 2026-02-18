@@ -1,176 +1,73 @@
-# Mukt - Free AI Agent
+# openrouter-free-responder
 
-Node.js implementation of a free AI agent with tool support using the OpenRouter API. 
+[![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-0A84FF)](https://docs.openclaw.ai/tools/skills)
+[![OpenRouter](https://img.shields.io/badge/OpenRouter-Free%20Model%20Routing-00A67E)](https://openrouter.ai)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)](https://www.python.org)
+[![Env](https://img.shields.io/badge/Requires-OPENROUTER__API__KEY-orange)](#dependency)
+[![License](https://img.shields.io/badge/License-MIT-black)](./LICENSE)
 
-**Mukt** (Hindi: मुक्त, meaning "free/liberated") automatically finds and uses free AI models on OpenRouter.ai, making AI experimentation accessible to everyone.
+OpenClaw skill focused on one job: find a currently free OpenRouter model, run a prompt, and return the response.
 
-## Why Mukt?
+## Purpose
 
-I believe experimenting with the newest AI models should be accessible to all. Most AI providers require credit cards upfront, creating barriers for many users. Mukt is designed for developers and tech enthusiasts who want to explore AI capabilities without financial commitment.
+- Discover available free models from OpenRouter at request time
+- Rank candidates and use fallback attempts when a model fails
+- Return structured output with selected model and response text
 
-**Disclaimer**: While Mukt helps avoid charges by selecting free models, usage is subject to OpenRouter's terms and conditions. Free models may have different privacy or data usage policies than paid models. Check your settings at https://openrouter.ai/settings/privacy. 
+## Dependency
 
-## Features
+- `OPENROUTER_API_KEY` (required)
 
-- **Conversational AI**: Continuous chat loop with context preservation
-- **Tool Support**: Built-in tools for file operations and command execution
-- **Smart Memory**: Automatic conversation history management
-- **Timeout Handling**: Robust API timeout and error handling
-- **Tested**: Comprehensive test suite with Vitest
-- **Model Selection**: Auto-selects free models based on preferences
-- **Modular Architecture**: Separated concerns for easy testing and maintenance
-
-## Available Tools
-
-- **`list_files`** - List directory contents
-- **`read_file`** - Read file contents with optional line limits
-- **`run_command`** - Execute shell commands safely
-
-## Installation
-
-### Global Installation
+Create your local env value:
 
 ```bash
-npm install -g mukt
+export OPENROUTER_API_KEY="your-openrouter-api-key"
 ```
 
-### Local Development
+## Local Check
 
 ```bash
-# Clone and setup
-git clone <repository>
-cd mukt
-npm install
-
-# Make executable
-chmod +x index.js
+python3 scripts/openrouter_free_chat.py --prompt "Say hello in one sentence"
 ```
 
-## Usage
+## Tests
+
+Run offline unit tests (no network calls):
 
 ```bash
-# Run with default preference (google)
-mukt
-
-# Run with specific model preference
-mukt llama
-mukt mistral
-mukt claude
-
-# Local development
-node index.js [preference]
+python3 -m unittest discover -s tests -p "test_*.py"
 ```
 
-## Environment Variables
-
-Set `OPENROUTER_API_KEY` environment variable for security:
+Optional flags:
 
 ```bash
-export OPENROUTER_API_KEY="your-api-key-here"
+python3 scripts/openrouter_free_chat.py \
+  --prompt "Summarize TCP in 4 bullets" \
+  --system "Be concise and accurate." \
+  --max-attempts 10 \
+  --temperature 0.2 \
+  --debug
 ```
 
-### Configuration Setup
+## OpenClaw Skill Entry
 
-Create a `constants.js` file for local development:
+Skill spec is in `SKILL.md`.
 
-```javascript
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "your-api-key-here";
+- Declares OpenClaw metadata
+- Declares required env dependency (`OPENROUTER_API_KEY`)
+- Uses `{baseDir}/scripts/openrouter_free_chat.py` as runtime command
 
-export {
-    OPENROUTER_API_KEY
-};
-```
+## Publish to ClawHub
 
-**Note**: The `constants.js` file is git-ignored to prevent accidental API key commits.
-
-## Development
+Install and authenticate ClawHub CLI, then publish from repo root:
 
 ```bash
-# Install dependencies
-npm install
-
-# Run tests
-npm test
-
-# Run tests once
-npm run test:run
-
-# Start development
-npm start
+clawhub publish . --slug openrouter-free-responder --version 1.0.0
 ```
 
-## Project Structure
-
-```
-mukt/
-├── src/
-│   ├── modelManager.js     # OpenRouter model management
-│   ├── apiClient.js        # API communication
-│   ├── toolSystem.js       # Tool loading and execution
-│   ├── conversation.js     # Message history management
-│   └── cli.js             # User interface
-├── tests/                 # Vitest test suite
-├── tools.json            # Tool definitions
-├── constants.js          # API key configuration (git-ignored)
-└── index.js              # Main entry point
-```
+Useful flags:
 
 ```bash
-export OPENROUTER_API_KEY="your-api-key-here"
-node index.js
+clawhub publish . --slug openrouter-free-responder --version 1.0.0 --dry-run
+clawhub publish . --slug openrouter-free-responder --version 1.0.0 --visibility public
 ```
-
-## Testing
-
-### Complete Test Suite
-```bash
-# Run all tests (unit + integration)
-npm run test:all
-```
-
-### No-API Testing (Recommended)
-```bash
-# Test without requiring OpenRouter API key
-npm run no-api:test
-```
-
-### Individual Test Suites  
-```bash
-# Unit tests only
-npm run test:unit
-
-# Integration tests only  
-npm run test:integration
-
-# Development testing (watch mode)
-npm test
-```
-
-Tests cover:
-- Agent initialization and model selection
-- Tool definitions and execution with confirmations
-- Complete conversation flows (mocked API responses)
-- Iterative tool execution
-- User confirmation prompts
-- Error handling and graceful degradation
-- JSON parsing/formatting
-
-**See [docs/INTEGRATION_TESTING.md](docs/INTEGRATION_TESTING.md) for detailed testing documentation.**
-
-## Requirements
-
-- Node.js (version 16 or higher)
-- [OpenRouter API key](https://openrouter.ai/settings/keys) (free account)
-- Set credit limit to zero to avoid any charges
-
-## License & Usage
-
-This project is open source. You provide your own API key and are responsible for your own usage according to OpenRouter's terms of service.
-
-Important Legal Notice: "Client Tooling" vs. "Reselling"
-
-**This tool is designed for legitimate "client tooling" usage:**
-
-**Safe & Legal**: A CLI where **you provide your own OpenRouter API key**. This is considered a "client" application (like a browser or mobile app) and is perfectly legal under OpenRouter's terms.
-
-**Prohibited**: A service that uses someone else's API key to provide free access to many users. This would be "redistributing" or "reselling" the service, which violates OpenRouter's terms without a specific partner agreement.

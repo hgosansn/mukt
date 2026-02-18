@@ -1,5 +1,5 @@
-constants.js
-node_modules/
 .env
 !.env.template
 .vscode/
+__pycache__/
+*.pyc
