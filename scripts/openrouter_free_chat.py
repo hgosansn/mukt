@@ -119,7 +119,7 @@ def openrouter_get(api_key: str, path: str) -> Dict[str, Any]:
         headers={"Authorization": f"Bearer {api_key}"},
         method="GET",
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    with urllib.request.urlopen(req) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
@@ -145,7 +145,7 @@ def openrouter_chat(
         method="POST",
     )
 
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with urllib.request.urlopen(req) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 

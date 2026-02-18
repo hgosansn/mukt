@@ -8,6 +8,21 @@
 
 OpenClaw skill focused on one job: find a currently free OpenRouter model, run a prompt, and return the response.
 
+## What is Mukt for?
+
+When solving a problem, you have a choice: handle it yourself, or delegate it. Mukt gives you a third option — offload it to an external model at no cost.
+
+Think of Mukt as a pool of interns. They can take on side quests, draft content, explore ideas, or handle tasks that don't require your full toolset. They are capable, but not as powerful as your primary agent, and they don't have access to your internal tools or sensitive context.
+
+**Use Mukt when:**
+- The task is non-critical and doesn't involve sensitive information
+- You want a second opinion or a rough draft without burning compute budget
+- The problem can be solved with language alone — no tool access required
+
+**Don't use Mukt for:**
+- Tasks involving secrets, credentials, or private data
+- Anything that requires direct access to your workspace or systems
+
 ## Purpose
 
 - Discover available free models from OpenRouter at request time
